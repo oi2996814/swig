@@ -50,7 +50,7 @@
  *
  *     %cstring_bounded_output(Char *outx, 512);
  *     void foo(Char *outx) {
- *         sprintf(outx,"blah blah\n");
+ *         strcpy(outx,"blah blah\n");
  *     }
  *
  */
@@ -175,7 +175,7 @@
  *
  *     %cstring_output_maxsize(Char *outx, int max) {
  *     void foo(Char *outx, int max) {
- *         sprintf(outx,"blah blah\n");
+ *         strcpy(outx,"blah blah\n");
  *     }
  */
 
@@ -205,7 +205,7 @@
  *
  *     %cstring_output_withsize(Char *outx, int *max) {
  *     void foo(Char *outx, int *max) {
- *         sprintf(outx,"blah blah\n");
+ *         strcpy(outx,"blah blah\n");
  *         *max = strlen(outx);  
  *     }
  */
@@ -236,10 +236,10 @@
  * This macro is used to return Character data that was
  * allocated with new or malloc.
  *
- *     %cstring_output_allocate(Char **outx, free($1));
+ *     %cstring_output_allocate(Char **outx, free(*$1));
  *     void foo(Char **outx) {
  *         *outx = (Char *) malloc(512);
- *         sprintf(outx,"blah blah\n");
+ *         strcpy(outx,"blah blah\n");
  *     }
  */
  
@@ -263,10 +263,10 @@
  * This macro is used to return Character data that was
  * allocated with new or malloc.
  *
- *     %cstring_output_allocate_size(Char **outx, int *sz, free($1));
+ *     %cstring_output_allocate_size(Char **outx, int *sz, free(*$1));
  *     void foo(Char **outx, int *sz) {
  *         *outx = (Char *) malloc(512);
- *         sprintf(outx,"blah blah\n");
+ *         strcpy(outx,"blah blah\n");
  *         *sz = strlen(outx);
  *     }
  */

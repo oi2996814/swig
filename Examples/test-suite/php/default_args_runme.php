@@ -2,7 +2,7 @@
 require "tests.php";
 
 // New functions
-check::functions(array('doublevalue1','doublevalue2','seek','seek2','seek3','seek4','seek5','seek6','seek7','seek8','seek9','seeka','seekb','anonymous','booltest','casts1','casts2','chartest1','chartest2','chartest3','chartest4','chartest5','chartest6','dummy','afunction','reftest1','reftest2','chops','exceptionspec','constructorcall','cfunc1','cfunc2','cfunc3','slightly_off_square'));
+check::functions(array('archiving_on', 'archiving_onw', 'doublevalue1','doublevalue2','seek','seek2','seek3','seek4','seek5','seek6','seek7','seek8','seek9','seeka','seekb','anonymous','booltest','casts1','casts2','chartest1','chartest2','chartest3','chartest4','chartest5','chartest6','dummy','afunction','reftest1','reftest2','chops','exceptionspec','constructorcall','cfunc1','cfunc2','cfunc3','nasty_default_expression','slightly_off_square','subscripted_default_arg'));
 // New classes
 check::classes(array('TrickyInPython','default_args','EnumClass','DerivedEnumClass','Tree','Foo','MyClass1','MyClass2','Except','Statics','Tricky','Klass','ConstMethods','Pointf','CDA'));
 // New vars
@@ -42,19 +42,6 @@ check::equal($f->double_if_void_ptr_is_null(6, Null), 12, "\$f->double_if_void_p
 
 check::equal($f->double_if_void_ptr_is_null(7), 14, "\$f->double_if_void_ptr_is_null(7)");
 
-# For the testcases below, PHP 7 emits an error, while PHP 8 throws an
-# exception.  To simplify the testcases we install an error handler function
-# for PHP7 which throws an ArgumentCountError exception (which we have to
-# define ourselves for PHP 7.0).
-
-if (PHP_MAJOR_VERSION == 7) {
-  if (PHP_MINOR_VERSION == 0) {
-    # ArgumentCountError was added in PHP 7.1.
-    class ArgumentCountError extends Error {}
-  }
-  $old_error_handler = set_error_handler(function($n,$s,$f,$l){throw preg_match('/^Wrong parameter count/', $s) ? new ArgumentCountError($s) : new Error($s);});
-}
-
 try {
     $f = new Foo(1);
     check::fail("Foo::Foo ignore is not working");
@@ -89,10 +76,6 @@ try {
     $m = $f->meth(1, 2, 3);
     check::fail("Foo::meth ignore is not working");
 } catch (Error $e) {
-}
-
-if (PHP_MAJOR_VERSION == 7) {
-  set_error_handler($old_error_handler);
 }
 
 check::equal(Klass::inc(100, new Klass(22))->val, 122, "Klass::inc failed");
@@ -143,19 +126,17 @@ check::equal(chartest5(), "B", "chartest5()");
 
 check::equal(chartest6(), "C", "chartest6()");
 
-if (PHP_MAJOR_VERSION >= 8) {
-  // Regression test for bug in initial implementation of PHP type declarations.
-  $p = (new ReflectionMethod('TrickyInPython', 'value_m1'))->getParameters();
-  // empty array in buggy version
-  check::equal(count($p), 2, "Expected 2 parameters");
-  check::equal((string)$p[0]->getType(), 'int', "Expected int parameter");
-  check::equal((string)$p[1]->getType(), 'int', "Expected int parameter");
+// Regression test for bug in initial implementation of PHP type declarations.
+$p = (new ReflectionMethod('TrickyInPython', 'value_m1'))->getParameters();
+// empty array in buggy version
+check::equal(count($p), 2, "Expected 2 parameters");
+check::equal((string)$p[0]->getType(), 'int', "Expected int parameter");
+check::equal((string)$p[1]->getType(), 'int', "Expected int parameter");
 
-  $p = (new ReflectionMethod('EnumClass', 'blah'))->getParameters();
-  // empty array in buggy version
-  check::equal(count($p), 2, "Expected 2 parameters");
-  check::equal((string)$p[0]->getType(), 'int', "Expected int parameter");
-  check::equal((string)$p[1]->getType(), 'int', "Expected int parameter");
-}
+$p = (new ReflectionMethod('EnumClass', 'blah'))->getParameters();
+// empty array in buggy version
+check::equal(count($p), 2, "Expected 2 parameters");
+check::equal((string)$p[0]->getType(), 'int', "Expected int parameter");
+check::equal((string)$p[1]->getType(), 'int', "Expected int parameter");
 
 check::done();

@@ -4,8 +4,6 @@
  * Java typemaps
  * ----------------------------------------------------------------------------- */
 
-%include <typemaps/swigversion.swg>
-
 %include <javahead.swg>
 
 /* The jni, jtype and jstype typemaps work together and so there should be one of each. 
@@ -1041,7 +1039,7 @@ Swig::LocalRefGuard $1_refguard(jenv, $input); }
                  unsigned long, 
                  unsigned short
 %{ char error_msg[256];
-   sprintf(error_msg, "C++ $1_type exception thrown, value: %d", $1);
+   SWIG_snprintf(error_msg, sizeof(error_msg), "C++ $1_type exception thrown, value: %d", $1);
    SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, error_msg);
    return $null; %}
 
@@ -1306,7 +1304,7 @@ SWIG_JAVABODY_PROXY(protected, protected, SWIGTYPE)
 SWIG_JAVABODY_TYPEWRAPPER(protected, protected, protected, SWIGTYPE)
 
 %typemap(javafinalize) SWIGTYPE %{
-  @SuppressWarnings("deprecation")
+  @SuppressWarnings({"deprecation", "removal"})
   protected void finalize() {
     delete();
   }
@@ -1400,11 +1398,19 @@ SWIG_PROXY_CONSTRUCTOR(true, true, SWIGTYPE)
 
 %pragma(java) jniclassclassmodifiers="public class"
 %pragma(java) moduleclassmodifiers="public class"
+%pragma(java) constantsmodifiers="public interface"
 
-/* Some ANSI C typemaps */
+/* 64-bit architecture specific typemaps */
+#if defined(SWIGWORDSIZE64)
+%apply long long { long };
+%apply unsigned long long { unsigned long };
+%apply const long long & { const long & };
+%apply const unsigned long long & { const unsigned long & };
+#endif
 
-%apply unsigned long { size_t };
-%apply const unsigned long & { const size_t & };
+/* size_t maps to Java 64-bit (signed) long type */
+%apply unsigned int { size_t };
+%apply const unsigned int & { const size_t & };
 
 /* Array reference typemaps */
 %apply SWIGTYPE & { SWIGTYPE ((&)[ANY]) }
@@ -1418,8 +1424,8 @@ SWIG_PROXY_CONSTRUCTOR(true, true, SWIGTYPE)
 /* String & length */
 %typemap(jni)     (const char *STRING, size_t LENGTH) "jbyteArray"
 %typemap(jtype)   (const char *STRING, size_t LENGTH) "byte[]"
-%typemap(jstype)  (const char *STRING, size_t LENGTH) "byte[]"
-%typemap(javain)  (const char *STRING, size_t LENGTH) "$javainput"
+%typemap(jstype)  (const char *STRING, size_t LENGTH) "String"
+%typemap(javain)  (const char *STRING, size_t LENGTH) %{($javainput == null) ? null : $javainput.getBytes()%}
 %typemap(freearg) (const char *STRING, size_t LENGTH) ""
 %typemap(in)      (const char *STRING, size_t LENGTH) {
   if ($input) {
@@ -1433,7 +1439,7 @@ SWIG_PROXY_CONSTRUCTOR(true, true, SWIGTYPE)
 %typemap(argout)  (const char *STRING, size_t LENGTH) {
   if ($input) JCALL3(ReleaseByteArrayElements, jenv, $input, (jbyte *)$1, JNI_ABORT);
 }
-%typemap(directorin, descriptor="[B", noblock=1) (const char *STRING, size_t LENGTH) {
+%typemap(directorin, descriptor="Ljava/lang/String;", noblock=1) (const char *STRING, size_t LENGTH) {
   $input = 0;
   if ($1) {
     $input = JCALL1(NewByteArray, jenv, (jsize)$2);
@@ -1442,7 +1448,7 @@ SWIG_PROXY_CONSTRUCTOR(true, true, SWIGTYPE)
   }
   Swig::LocalRefGuard $1_refguard(jenv, $input);
 }
-%typemap(javadirectorin, descriptor="[B") (const char *STRING, size_t LENGTH) "$jniinput"
+%typemap(javadirectorin, descriptor="[B") (const char *STRING, size_t LENGTH) "($jniinput == null) ? null : new String($jniinput)"
 %apply (const char *STRING, size_t LENGTH) { (char *STRING, size_t LENGTH) }
 /* Enable write-back for non-const version */
 %typemap(argout)  (char *STRING, size_t LENGTH) {

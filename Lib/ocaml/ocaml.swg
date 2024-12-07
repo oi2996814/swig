@@ -63,7 +63,7 @@
 
 #if 0
 %typemap(argout) SWIGTYPE & {
-    const CAML_VALUE *fromval = caml_named_value("create_$ntype_from_ptr");
+    const value *fromval = caml_named_value("create_$ntype_from_ptr");
     if( fromval ) {
 	swig_result =
 	    caml_list_append(swig_result,
@@ -76,7 +76,7 @@
     }
 }
 %typemap(argout) SWIGTYPE && {
-    const CAML_VALUE *fromval = caml_named_value("create_$ntype_from_ptr");
+    const value *fromval = caml_named_value("create_$ntype_from_ptr");
     if( fromval ) {
 	swig_result =
 	    caml_list_append(swig_result,
@@ -193,8 +193,8 @@ SIMPLE_MAP(unsigned long long,caml_val_ulong,caml_long_val);
 
 /* Pass through value */
 
-%typemap (in) CAML_VALUE "$1=$input;"
-%typemap (out) CAML_VALUE "$result=$1;"
+%typemap (in) value "$1=$input;"
+%typemap (out) value "$result=$1;"
 
 #if 0
 %include <carray.i>
@@ -298,6 +298,8 @@ SIMPLE_MAP(unsigned long long,caml_val_ulong,caml_long_val);
 %swig_enum_out(out)
 %swig_enum_out(varout)
 %swig_enum_out(directorin)
+
+/* String & length typemap */
 
 %typemap(in) (char *STRING, int LENGTH), (char *STRING, size_t LENGTH) {
     $1 = ($1_ltype) caml_string_val($input);

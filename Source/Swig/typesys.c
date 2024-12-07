@@ -264,7 +264,7 @@ int SwigType_typedef_class(const_String_or_char_ptr name) {
  * Returns the qualified scope name of a type table
  * ----------------------------------------------------------------------------- */
 
-String *SwigType_scope_name(Typetab *ttab) {
+static String *SwigType_scope_name(Typetab *ttab) {
   String *qname = NewString(Getattr(ttab, "name"));
   ttab = Getattr(ttab, "parent");
   while (ttab) {
@@ -502,6 +502,9 @@ static Typetab *SwigType_find_scope(Typetab *s, const SwigType *nameprefix) {
     String *qname = Getattr(ss, "qname");
     if (qname) {
       full = NewStringf("%s::%s", qname, nameprefix);
+      if (Strncmp(full, "enum ", 5) == 0) {
+	Delslice(full, 0, 5);
+      }
     } else {
       full = NewString(nameprefix);
     }
@@ -740,9 +743,11 @@ SwigType *SwigType_typedef_resolve(const SwigType *t) {
 	    type = Copy(namebase);
 	    Insert(type, 0, "::");
 	    Insert(type, 0, rnameprefix);
-	    if (strncmp(Char(type), "::", 2) == 0) {
-	      Delitem(type, 0);
-	      Delitem(type, 0);
+	    if (Strncmp(type, "enum ", 5) == 0) {
+	      Delslice(type, 0, 5);
+	    }
+	    if (Strncmp(type, "::", 2) == 0) {
+	      Delslice(type, 0, 2);
 	    }
 	    newtype = 1;
 	  } else {
@@ -1148,6 +1153,7 @@ SwigType *SwigType_typedef_qualified(const SwigType *t) {
 	Append(qprefix, "<(");
 	pi = First(parms);
 	while ((p = pi.item)) {
+	  /* TODO: the logic here should be synchronised with that in symbol_template_qualify() in symbol.c */
 	  String *qt = SwigType_typedef_qualified(p);
 	  if (Equal(qt, p)) {	/*  && (!Swig_scopename_check(qt))) */
 	    /* No change in value.  It is entirely possible that the parameter is an integer value.
@@ -1419,7 +1425,8 @@ int SwigType_type(const SwigType *t) {
       c++;
     if (*c)
       return SwigType_type(c + 1);
-    return T_ERROR;
+    Printf(stderr, "*** Internal error: Invalid type string '%s'\n", t);
+    Exit(EXIT_FAILURE);
   }
   if (strncmp(c, "f(", 2) == 0)
     return T_FUNCTION;
@@ -1491,11 +1498,11 @@ int SwigType_type(const SwigType *t) {
  * Returns the alternative value type needed in C++ for class value
  * types. When swig is not sure about using a plain $ltype value,
  * since the class doesn't have a default constructor, or it can't be
- * assigned, you will get back 'SwigValueWrapper<type >'.
+ * assigned, you will get back 'SwigValueWrapper<(type)>'.
  *
  * This is the default behavior unless:
  *
- *  1.- swig detects a default_constructor and 'setallocate:default_constructor'
+ *  1.- swig detects a default_constructor and 'allocate:default_constructor'
  *      attribute.
  *
  *  2.- swig doesn't mark 'type' as non-assignable.
@@ -1564,11 +1571,7 @@ SwigType *SwigType_alttype(const SwigType *t, int local_tmap) {
   }
 
   if (use_wrapper) {
-    /* Need a space before the type in case it starts "::" (since the <:
-     * token is a digraph for [ in C++.  Also need a space after the
-     * type in case it ends with ">" since then we form the token ">>".
-     */
-    w = NewStringf("SwigValueWrapper< %s >", td);
+    w = NewStringf("SwigValueWrapper<(%s)>", td);
   }
   Delete(td);
   return w;
@@ -1700,16 +1703,6 @@ void SwigType_remember_clientdata(const SwigType *t, const_String_or_char_ptr cl
   /*Printf(stdout,"t = '%s'\n", t);
      Printf(stdout,"fr= '%s'\n\n", fr); */
 
-  if (t) {
-    char *ct = Char(t);
-    const char *lt = strchr(ct, '<');
-    /* Allow for `<<` operator in constant expression for array size. */
-    if (lt && lt[1] != '(' && lt[1] != '<') {
-      Printf(stdout, "Bad template type passed to SwigType_remember: %s\n", t);
-      assert(0);
-    }
-  }
-
   h = Getattr(r_mangled, mt);
   if (!h) {
     h = NewHash();
@@ -1777,7 +1770,7 @@ void (*SwigType_remember_trace(void (*tf) (const SwigType *, String *, String *)
  * r_resolved hash and combine them together in a list (removing duplicate entries).
  * ----------------------------------------------------------------------------- */
 
-List *SwigType_equivalent_mangle(String *ms, Hash *checked, Hash *found) {
+static List *SwigType_equivalent_mangle(String *ms, Hash *checked, Hash *found) {
   List *l;
   Hash *h;
   Hash *ch;
@@ -1969,7 +1962,7 @@ int SwigType_issubtype(const SwigType *t1, const SwigType *t2) {
  * Modify the type table to handle C++ inheritance
  * ----------------------------------------------------------------------------- */
 
-void SwigType_inherit_equiv(File *out) {
+static void SwigType_inherit_equiv(File *out) {
   String *ckey;
   String *prefix, *base;
   String *mprefix, *mkey;

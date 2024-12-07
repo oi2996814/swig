@@ -4,8 +4,6 @@
  * C# typemaps
  * ----------------------------------------------------------------------------- */
 
-%include <typemaps/swigversion.swg>
-
 %include <csharphead.swg>
 
 /* The ctype, imtype and cstype typemaps work together and so there should be one of each. 
@@ -84,8 +82,8 @@ SWIGINTERN const char * SWIG_UnpackData(const char *c, void *ptr, size_t sz) {
 %typemap(ctype) unsigned short,     const unsigned short &     "unsigned short"
 %typemap(ctype) int,                const int &                "int"
 %typemap(ctype) unsigned int,       const unsigned int &       "unsigned int"
-%typemap(ctype) long,               const long &               "long"
-%typemap(ctype) unsigned long,      const unsigned long &      "unsigned long"
+%typemap(ctype) long,               const long &               "int"
+%typemap(ctype) unsigned long,      const unsigned long &      "unsigned int"
 %typemap(ctype) long long,          const long long &          "long long"
 %typemap(ctype) unsigned long long, const unsigned long long & "unsigned long long"
 %typemap(ctype) float,              const float &              "float"
@@ -203,9 +201,9 @@ SWIGINTERN const char * SWIG_UnpackData(const char *c, void *ptr, size_t sz) {
 %typemap(directorin) short              "$input = $1;"
 %typemap(directorin) unsigned short     "$input = $1;"
 %typemap(directorin) int                "$input = $1;"
-%typemap(directorin) unsigned int       "$input = $1;"
+%typemap(directorin) unsigned int       "$input = (unsigned int)$1;"
 %typemap(directorin) long               "$input = $1;"
-%typemap(directorin) unsigned long      "$input = (unsigned long)$1;"
+%typemap(directorin) unsigned long      "$input = $1;"
 %typemap(directorin) long long          "$input = $1;"
 %typemap(directorin) unsigned long long "$input = $1;"
 %typemap(directorin) float              "$input = $1;"
@@ -248,9 +246,9 @@ SWIGINTERN const char * SWIG_UnpackData(const char *c, void *ptr, size_t sz) {
 %typemap(out) short              %{ $result = $1; %}
 %typemap(out) unsigned short     %{ $result = $1; %}
 %typemap(out) int                %{ $result = $1; %}
-%typemap(out) unsigned int       %{ $result = $1; %}
+%typemap(out) unsigned int       %{ $result = (unsigned int)$1; %}
 %typemap(out) long               %{ $result = $1; %}
-%typemap(out) unsigned long      %{ $result = (unsigned long)$1; %}
+%typemap(out) unsigned long      %{ $result = $1; %}
 %typemap(out) long long          %{ $result = $1; %}
 %typemap(out) unsigned long long %{ $result = $1; %}
 %typemap(out) float              %{ $result = $1; %}
@@ -329,7 +327,7 @@ SWIGINTERN const char * SWIG_UnpackData(const char *c, void *ptr, size_t sz) {
 %typemap(directorin) const short &          "$input = $1;"
 %typemap(directorin) const unsigned short & "$input = $1;"
 %typemap(directorin) const int &            "$input = $1;"
-%typemap(directorin) const unsigned int &   "$input = $1;"
+%typemap(directorin) const unsigned int &   "$input = (unsigned int)$1;"
 %typemap(directorin) const long &           "$input = $1;"
 %typemap(directorin) const unsigned long &  "$input = $1;"
 %typemap(directorin) const long long &      "$input = $1;"
@@ -375,9 +373,9 @@ SWIGINTERN const char * SWIG_UnpackData(const char *c, void *ptr, size_t sz) {
 %typemap(out) const short &              %{ $result = *$1; %}
 %typemap(out) const unsigned short &     %{ $result = *$1; %}
 %typemap(out) const int &                %{ $result = *$1; %}
-%typemap(out) const unsigned int &       %{ $result = *$1; %}
+%typemap(out) const unsigned int &       %{ $result = (unsigned int)*$1; %}
 %typemap(out) const long &               %{ $result = *$1; %}
-%typemap(out) const unsigned long &      %{ $result = (unsigned long)*$1; %}
+%typemap(out) const unsigned long &      %{ $result = *$1; %}
 %typemap(out) const long long &          %{ $result = *$1; %}
 %typemap(out) const unsigned long long & %{ $result = *$1; %}
 %typemap(out) const float &              %{ $result = *$1; %}
@@ -581,7 +579,7 @@ SWIGINTERN const char * SWIG_UnpackData(const char *c, void *ptr, size_t sz) {
                  unsigned long, 
                  unsigned short
 %{ char error_msg[256];
-   sprintf(error_msg, "C++ $1_type exception thrown, value: %d", $1);
+   SWIG_snprintf(error_msg, sizeof(error_msg), "C++ $1_type exception thrown, value: %d", $1);
    SWIG_CSharpSetPendingException(SWIG_CSharpApplicationException, error_msg);
    return $null; %}
 
@@ -1064,10 +1062,17 @@ SWIG_CSBODY_TYPEWRAPPER(internal, protected, internal, SWIGTYPE)
 %pragma(csharp) imclassclassmodifiers="class"
 %pragma(csharp) moduleclassmodifiers="public class"
 
-/* Some ANSI C typemaps */
+/* 64-bit architecture specific typemaps */
+#if defined(SWIGWORDSIZE64)
+%apply long long { long };
+%apply unsigned long long { unsigned long };
+%apply const long long & { const long & };
+%apply const unsigned long long & { const unsigned long & };
+#endif
 
-%apply unsigned long { size_t };
-%apply const unsigned long & { const size_t & };
+/* size_t maps to C# 32-bit uint type */
+%apply unsigned int { size_t };
+%apply const unsigned int & { const size_t & };
 
 /* Array reference typemaps */
 %apply SWIGTYPE & { SWIGTYPE ((&)[ANY]) }
@@ -1077,6 +1082,100 @@ SWIG_CSBODY_TYPEWRAPPER(internal, protected, internal, SWIGTYPE)
 %apply SWIGTYPE * { SWIGTYPE *const }
 %apply SWIGTYPE (CLASS::*) { SWIGTYPE (CLASS::*const) }
 %apply SWIGTYPE & { SWIGTYPE (CLASS::*const&) }
+
+/* String & length */
+%fragment("SWIG_csharp_string", "header") %{
+#ifdef __cplusplus
+extern "C" {
+#endif
+typedef struct { int len; int size; char* str; } SWIG_csharp_string;
+
+SWIGEXPORT void* SWIGSTDCALL SWIG_csharp_string_to_c(int size, int len, char *str) {
+  SWIG_csharp_string *ret;
+  ret = (SWIG_csharp_string *)malloc(sizeof(SWIG_csharp_string));
+  if (ret == SWIG_NULLPTR) {
+    SWIG_CSharpSetPendingException(SWIG_CSharpOutOfMemoryException, "fail to duplicate string container.");
+    return SWIG_NULLPTR;
+  }
+  if (size > 0) {
+    /* The string is in UTF8 encoding */
+    ret->str = (char *)malloc(size + 1);
+    if (ret->str == SWIG_NULLPTR) {
+      SWIG_CSharpSetPendingException(SWIG_CSharpOutOfMemoryException, "fail to duplicate string.");
+      free(ret);
+      return SWIG_NULLPTR;
+    }
+    memcpy(ret->str, str, size + 1);
+    ret->size = size; /* number of bytes in the UTF8 encoding */
+    ret->len = len;   /* number of characters in string */
+  } else {
+    ret->str = SWIG_NULLPTR;
+    ret->size = 0;
+    ret->len = 0;
+  }
+  return ret;
+}
+SWIGEXPORT int SWIGSTDCALL SWIG_csharp_string_size(SWIG_csharp_string *p) {
+  if (p) {
+    return p->size;
+  }
+  return 0;
+}
+SWIGEXPORT char *SWIGSTDCALL SWIG_csharp_string_str(SWIG_csharp_string *p) {
+  if (p) {
+    char *ret = p->str;
+    free(p);
+    return ret;
+  }
+  return NULL;
+}
+
+#ifdef __cplusplus
+}
+#endif
+%}
+
+/* string & length typemap */
+
+%typemap(cstype) (const char *STRING, size_t LENGTH) "string"
+%typemap(ctype)  (const char *STRING, size_t LENGTH) "void *"
+%typemap(imtype) (const char *STRING, size_t LENGTH) "global::System.IntPtr"
+%typemap(csin)   (const char *STRING, size_t LENGTH) "$modulePINVOKE.SWIGStringWithLengthHelper.SWIG_csharp_string_to_c($csinput)"
+%typemap(in, canthrow=1, fragment="SWIG_csharp_string") (const char *STRING, size_t LENGTH) {
+  SWIG_csharp_string *p;
+  p = (SWIG_csharp_string *)$input;
+  if (p != SWIG_NULLPTR) {
+    $1 = ($1_ltype)p->str;
+    $2 = ($2_ltype)p->size; /* We use number of bytes */
+  } else {
+    $1 = 0;
+    $2 = 0;
+  }
+}
+%typemap(freearg, fragment="SWIG_csharp_string") (const char *STRING, size_t LENGTH) {
+  SWIG_csharp_string *p;
+  p = (SWIG_csharp_string *)$input;
+  if (p != SWIG_NULLPTR) {
+    free(p->str);
+    free(p);
+  }
+}
+
+%typemap(directorin) (const char *STRING, size_t LENGTH) %{
+  if ($1 && $2 > 0) {
+    $input = malloc(sizeof(SWIG_csharp_string));
+    if ($input) {
+      SWIG_csharp_string *p = (SWIG_csharp_string *)$input;
+      p->str = (char *)$1;
+      p->size = (int)$2;
+    }
+  }
+%}
+%typemap(csdirectorin) (const char *STRING, size_t LENGTH) "$modulePINVOKE.SWIGStringWithLengthHelper.SWIG_c_to_csharp_string($iminput)"
+
+%apply (const char *STRING, size_t LENGTH) { (char *STRING, size_t LENGTH) }
+%apply (const char *STRING, size_t LENGTH) { (const char *STRING, int LENGTH) }
+%apply (char *STRING, size_t LENGTH) { (char *STRING, int LENGTH) }
 
 /* csharp keywords */
 %include <csharpkw.swg>
